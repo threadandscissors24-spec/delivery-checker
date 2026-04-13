@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thread and Scissors Alterations</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f7f7f7;
+        color: #222;
+      }
+
+      .wrap {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .card {
+        width: 100%;
+        max-width: 520px;
+        background: #ffffff;
+        border-radius: 22px;
+        padding: 28px 22px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      }
+
+      .brand {
+        text-align: center;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: #7a7a7a;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0 0 10px 0;
+        text-align: center;
+        font-size: 28px;
+        line-height: 1.2;
+      }
+
+      .subtext {
+        text-align: center;
+        font-size: 15px;
+        line-height: 1.5;
+        color: #555;
+        margin: 0 auto 22px auto;
+        max-width: 420px;
+      }
+
+      .search-box {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      input {
+        width: 100%;
+        padding: 15px 18px;
+        font-size: 16px;
+        border: 1px solid #d9d9d9;
+        border-radius: 16px;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        background: #fff;
+      }
+
+      input:focus {
+        border-color: #111;
+        box-shadow: 0 0 0 3px rgba(0,0,0,0.06);
+      }
+
+      button {
+        width: 100%;
+        padding: 15px 18px;
+        font-size: 16px;
+        font-weight: 700;
+        border: none;
+        border-radius: 16px;
+        background: #111;
+        color: #fff;
+        cursor: pointer;
+        transition: transform 0.05s ease, opacity 0.2s ease;
+      }
+
+      button:hover {
+        opacity: 0.95;
+      }
+
+      button:active {
+        transform: scale(0.99);
+      }
+
+      #result {
+        margin-top: 18px;
+        padding: 16px 18px;
+        border-radius: 16px;
+        background: #f3f3f3;
+        font-size: 16px;
+        line-height: 1.5;
+        font-weight: 600;
+        color: #222;
+        min-height: 56px;
+      }
+
+      .note {
+        margin-top: 14px;
+        text-align: center;
+        font-size: 13px;
+        line-height: 1.4;
+        color: #777;
+      }
+
+      @media (max-width: 480px) {
+        .card {
+          padding: 22px 16px;
+          border-radius: 18px;
+        }
+
+        h1 {
+          font-size: 24px;
+        }
+
+        .subtext {
+          font-size: 14px;
+        }
+
+        input,
+        button {
+          font-size: 16px;
+        }
+
+        #result {
+          font-size: 15px;
+        }
+      }
+    </style>
+
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCZoyQa2zJeNiIaHyUekHtNaBEgdmQ16WY&libraries=routes"
+      async
+      defer
+    ></script>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <div class="brand">Thread and Scissors Alterations</div>
+
+        <h1>Check Pickup & Delivery Cost</h1>
+
+        <p class="subtext">
+          Enter your full address to check your pickup & delivery cost.
+          Depending on your location, you may qualify for FREE service.
+        </p>
+
+        <div class="search-box">
+          <input
+            type="text"
+            id="address"
+            placeholder="Enter your full address"
+            onkeydown="if(event.key==='Enter'){checkPrice();}"
+          >
+          <button type="button" onclick="checkPrice()">Check Price</button>
+        </div>
+
+        <div id="result"></div>
+
+        <div class="note">
+          Free pickup & delivery may be available depending on your location and order total.
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const BASE_ADDRESS = "2976 4th St, Orlando, FL 32820, USA";
+      const RATE_PER_MILE = 0.50;
+      const FREE_MILES = 8;
+      const MAX_MILES = 50;
+
+      async function checkPrice() {
+        const address = document.getElementById("address").value.trim();
+        const resultDiv = document.getElementById("result");
+
+        if (!address) {
+          resultDiv.innerText = "Please enter your full address.";
+          return;
+        }
+
+        resultDiv.innerText = "Checking your address...";
+
+        try {
+          const { DistanceMatrixService } = await google.maps.importLibrary("routes");
+          const service = new DistanceMatrixService();
+
+          service.getDistanceMatrix(
+            {
+              origins: [BASE_ADDRESS],
+              destinations: [address],
+              travelMode: google.maps.TravelMode.DRIVING,
+              unitSystem: google.maps.UnitSystem.IMPERIAL
+            },
+            (response, status) => {
+              if (
+                status !== "OK" ||
+                !response ||
+                !response.rows ||
+                !response.rows[0] ||
+                !response.rows[0].elements ||
+                !response.rows[0].elements[0] ||
+                response.rows[0].elements[0].status !== "OK"
+              ) {
+                resultDiv.innerText = "Unable to calculate the delivery cost right now.";
+                return;
+              }
+
+              const meters = response.rows[0].elements[0].distance.value;
+              const miles = meters * 0.000621371;
+
+              if (miles > MAX_MILES) {
+                resultDiv.innerText =
+                  "Your address is outside our service range. Please contact us at 689-332-6243 for special arrangements.";
+                return;
+              }
+
+              if (miles <= FREE_MILES) {
+                resultDiv.innerText = "Your pickup & delivery cost is FREE.";
+                return;
+              }
+
+              let freeThreshold = 100;
+              if (miles > 20 && miles <= 30) {
+                freeThreshold = 150;
+              } else if (miles > 30 && miles <= 50) {
+                freeThreshold = 200;
+              }
+
+              let price = miles * RATE_PER_MILE;
+              price = Math.floor(price) + 0.99;
+
+              resultDiv.innerText =
+                "Your pickup & delivery cost is $" +
+                price.toFixed(2) +
+                ". This amount will be added to your total order price. Orders over $" +
+                freeThreshold +
+                " qualify for FREE pickup & delivery.";
+            }
+          );
+        } catch (e) {
+          resultDiv.innerText = "Error calculating the delivery cost.";
+        }
+      }
+    </script>
+  </body>
+</html>
