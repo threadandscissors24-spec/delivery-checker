@@ -156,24 +156,26 @@
 
           if (data.status === "FREE") {
             result.innerText = "Your pickup & delivery cost is FREE.";
-          } else if (data.status === "PAID") {
+          } 
+          else if (data.status === "PAID") {
             result.innerText =
               "Your pickup & delivery cost is $" +
               data.price.toFixed(2) +
               ". This amount will be added to your total order price. Orders over $" +
               data.freeThreshold +
               " qualify for FREE pickup & delivery.";
-          } else if (data.status === "OUT_OF_RANGE") {
+          } 
+          else if (data.status === "OUT_OF_RANGE") {
             result.innerText =
               "Your address is outside our service range. Please contact us at 689-332-6243 for special arrangements.";
-          } else {
+          } 
+          else {
             result.innerText =
-              "Unable to calculate right now.\n" +
-              JSON.stringify(data, null, 2);
+              "We couldn’t verify this address. Please enter a complete address, including street, city, state, and ZIP code.";
           }
 
         } catch (e) {
-          result.innerText = "Error connecting to server: " + e.message;
+          result.innerText = "Error connecting to server. Please try again.";
         }
       }
     </script>
@@ -187,8 +189,7 @@
         <h1>Check Pickup & Delivery Cost</h1>
 
         <p class="subtext">
-          Enter your full address to check your pickup & delivery cost.
-          Depending on your location, you may qualify for FREE service.
+          Enter your full address to check your pickup & delivery cost. Depending on your location, you may qualify for FREE service.
         </p>
 
         <div class="search-box">
@@ -198,7 +199,7 @@
             placeholder="Enter your full address"
             onkeydown="if(event.key==='Enter'){checkPrice();}"
           >
-          <button type="button" onclick="checkPrice()">Check Price</button>
+          <button onclick="checkPrice()">Check Price</button>
         </div>
 
         <div id="result"></div>
