@@ -101,6 +101,7 @@
         font-weight: 600;
         color: #222;
         min-height: 56px;
+        white-space: pre-wrap;
       }
 
       .note {
@@ -158,72 +159,86 @@
         }
 
         if (!mapsReady || !window.google || !google.maps || !google.maps.DistanceMatrixService) {
-          resultDiv.innerText = "Google Maps is still loading. Please try again in a moment.";
+          resultDiv.innerText = "Google Maps is not ready yet.";
           return;
         }
 
         resultDiv.innerText = "Checking your address...";
 
-        const service = new google.maps.DistanceMatrixService();
+        try {
+          const service = new google.maps.DistanceMatrixService();
 
-        service.getDistanceMatrix(
-          {
-            origins: [BASE_ADDRESS],
-            destinations: [address],
-            travelMode: google.maps.TravelMode.DRIVING,
-            unitSystem: google.maps.UnitSystem.IMPERIAL
-          },
-          function(response, status) {
-            if (
-              status !== "OK" ||
-              !response ||
-              !response.rows ||
-              !response.rows[0] ||
-              !response.rows[0].elements ||
-              !response.rows[0].elements[0] ||
-              response.rows[0].elements[0].status !== "OK"
-            ) {
-              resultDiv.innerText = "Unable to calculate the delivery cost right now.";
-              return;
-            }
+          service.getDistanceMatrix(
+            {
+              origins: [BASE_ADDRESS],
+              destinations: [address],
+              travelMode: google.maps.TravelMode.DRIVING,
+              unitSystem: google.maps.UnitSystem.IMPERIAL
+            },
+            function(response, status) {
+              if (status !== "OK") {
+                resultDiv.innerText = "Distance Matrix error: " + status;
+                return;
+              }
 
-            const meters = response.rows[0].elements[0].distance.value;
-            const miles = meters * 0.000621371;
+              if (
+                !response ||
+                !response.rows ||
+                !response.rows[0] ||
+                !response.rows[0].elements ||
+                !response.rows[0].elements[0]
+              ) {
+                resultDiv.innerText = "Invalid response from Google Maps.";
+                return;
+              }
 
-            if (miles > MAX_MILES) {
+              const element = response.rows[0].elements[0];
+
+              if (element.status !== "OK") {
+                resultDiv.innerText = "Address error: " + element.status;
+                return;
+              }
+
+              const meters = element.distance.value;
+              const miles = meters * 0.000621371;
+
+              if (miles > MAX_MILES) {
+                resultDiv.innerText =
+                  "Your address is outside our service range. Please contact us at 689-332-6243 for special arrangements.";
+                return;
+              }
+
+              if (miles <= FREE_MILES) {
+                resultDiv.innerText = "Your pickup & delivery cost is FREE.";
+                return;
+              }
+
+              let freeThreshold = 100;
+              if (miles > 20 && miles <= 30) {
+                freeThreshold = 150;
+              } else if (miles > 30 && miles <= 50) {
+                freeThreshold = 200;
+              }
+
+              let price = miles * RATE_PER_MILE;
+              price = Math.floor(price) + 0.99;
+
               resultDiv.innerText =
-                "Your address is outside our service range. Please contact us at 689-332-6243 for special arrangements.";
-              return;
+                "Your pickup & delivery cost is $" +
+                price.toFixed(2) +
+                ". This amount will be added to your total order price. Orders over $" +
+                freeThreshold +
+                " qualify for FREE pickup & delivery.";
             }
-
-            if (miles <= FREE_MILES) {
-              resultDiv.innerText = "Your pickup & delivery cost is FREE.";
-              return;
-            }
-
-            let freeThreshold = 100;
-            if (miles > 20 && miles <= 30) {
-              freeThreshold = 150;
-            } else if (miles > 30 && miles <= 50) {
-              freeThreshold = 200;
-            }
-
-            let price = miles * RATE_PER_MILE;
-            price = Math.floor(price) + 0.99;
-
-            resultDiv.innerText =
-              "Your pickup & delivery cost is $" +
-              price.toFixed(2) +
-              ". This amount will be added to your total order price. Orders over $" +
-              freeThreshold +
-              " qualify for FREE pickup & delivery.";
-          }
-        );
+          );
+        } catch (e) {
+          resultDiv.innerText = "JavaScript error: " + e.message;
+        }
       }
     </script>
 
     <script
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCZoyQa2zJeNiIaHyUekHtNaBEgdmQ16WY&callback=googleMapsReady"
+      src="https://maps.googleapis.com/maps/api/js?key=PEGA_AQUI_TU_API_KEY&callback=googleMapsReady"
       async
       defer
     ></script>
