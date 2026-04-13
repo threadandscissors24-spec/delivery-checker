@@ -1,1 +1,38 @@
+export default async function handler(req, res) {
+  try {
+    const address = (req.query.address || "").trim();
 
+    if (!address) {
+      return res.status(400).json({ status: "ERROR" });
+    }
+
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+
+    const BASE_ADDRESS = "2976 4th St, Orlando, FL 32820, USA";
+
+    const url =
+      "https://maps.googleapis.com/maps/api/distancematrix/json?origins=" +
+      encodeURIComponent(BASE_ADDRESS) +
+      "&destinations=" + encodeURIComponent(address) +
+      "&units=imperial&key=" + apiKey;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    const element = data.rows[0].elements[0];
+
+    if (element.status !== "OK") {
+      return res.json({ status: "ERROR" });
+    }
+
+    const miles = element.distance.value * 0.000621371;
+
+    return res.json({
+      status: "OK",
+      miles: miles
+    });
+
+  } catch (e) {
+    return res.json({ status: "ERROR", message: e.message });
+  }
+}
