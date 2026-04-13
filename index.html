@@ -1,74 +1,212 @@
-export default async function handler(req, res) {
-  try {
-    const address = (req.query.address || "").trim();
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thread and Scissors Alterations</title>
 
-    if (!address) {
-      return res.status(400).json({ status: "ERROR" });
-    }
+    <style>
+      * {
+        box-sizing: border-box;
+      }
 
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-    const BASE_ADDRESS = "2976 4th St, Orlando, FL 32820, USA";
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f7f7f7;
+        color: #222;
+      }
 
-    const url =
-      "https://maps.googleapis.com/maps/api/distancematrix/json?origins=" +
-      encodeURIComponent(BASE_ADDRESS) +
-      "&destinations=" + encodeURIComponent(address) +
-      "&units=imperial&key=" + apiKey;
+      .wrap {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
 
-    const response = await fetch(url);
-    const data = await response.json();
+      .card {
+        width: 100%;
+        max-width: 520px;
+        background: #ffffff;
+        border-radius: 22px;
+        padding: 28px 22px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      }
 
-    const element = data.rows[0].elements[0];
+      .brand {
+        text-align: center;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: #7a7a7a;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+      }
 
-    if (element.status !== "OK") {
-      return res.json({ status: "ERROR" });
-    }
+      h1 {
+        margin: 0 0 10px 0;
+        text-align: center;
+        font-size: 28px;
+        line-height: 1.2;
+      }
 
-    const miles = element.distance.value * 0.000621371;
+      .subtext {
+        text-align: center;
+        font-size: 15px;
+        line-height: 1.5;
+        color: #555;
+        margin: 0 auto 22px auto;
+        max-width: 420px;
+      }
 
-    const RATE_PER_MILE = 0.50;
-    const FREE_MILES = 8;
-    const MAX_MILES = 50;
+      .search-box {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
 
-    if (miles > MAX_MILES) {
-      return res.json({
-        status: "OUT_OF_RANGE",
-        miles: miles,
-        price: "",
-        freeThreshold: ""
-      });
-    }
+      input {
+        width: 100%;
+        padding: 15px 18px;
+        font-size: 16px;
+        border: 1px solid #d9d9d9;
+        border-radius: 16px;
+        outline: none;
+        background: #fff;
+      }
 
-    if (miles <= FREE_MILES) {
-      return res.json({
-        status: "FREE",
-        miles: miles,
-        price: 0,
-        freeThreshold: 0
-      });
-    }
+      input:focus {
+        border-color: #111;
+        box-shadow: 0 0 0 3px rgba(0,0,0,0.06);
+      }
 
-    let freeThreshold = 100;
-    if (miles > 20 && miles <= 30) {
-      freeThreshold = 150;
-    } else if (miles > 30 && miles <= 50) {
-      freeThreshold = 200;
-    }
+      button {
+        width: 100%;
+        padding: 15px 18px;
+        font-size: 16px;
+        font-weight: 700;
+        border: none;
+        border-radius: 16px;
+        background: #111;
+        color: #fff;
+        cursor: pointer;
+      }
 
-    let price = miles * RATE_PER_MILE;
-    price = Math.floor(price) + 0.99;
+      #result {
+        margin-top: 18px;
+        padding: 16px 18px;
+        border-radius: 16px;
+        background: #f3f3f3;
+        font-size: 16px;
+        line-height: 1.5;
+        font-weight: 600;
+        color: #222;
+        min-height: 56px;
+        white-space: pre-wrap;
+      }
 
-    return res.json({
-      status: "PAID",
-      miles: miles,
-      price: price,
-      freeThreshold: freeThreshold
-    });
+      .note {
+        margin-top: 14px;
+        text-align: center;
+        font-size: 13px;
+        line-height: 1.4;
+        color: #777;
+      }
 
-  } catch (e) {
-    return res.json({
-      status: "ERROR",
-      message: e.message
-    });
-  }
-}
+      @media (max-width: 480px) {
+        .card {
+          padding: 22px 16px;
+          border-radius: 18px;
+        }
+
+        h1 {
+          font-size: 24px;
+        }
+
+        .subtext {
+          font-size: 14px;
+        }
+
+        input,
+        button {
+          font-size: 16px;
+        }
+
+        #result {
+          font-size: 15px;
+        }
+      }
+    </style>
+
+    <script>
+      async function checkPrice() {
+        const address = document.getElementById("address").value.trim();
+        const result = document.getElementById("result");
+
+        if (!address) {
+          result.innerText = "Please enter your full address.";
+          return;
+        }
+
+        result.innerText = "Checking...";
+
+        try {
+          const res = await fetch(`/api/calculate?address=${encodeURIComponent(address)}`);
+          const data = await res.json();
+
+          if (data.status === "FREE") {
+            result.innerText = "Your pickup & delivery cost is FREE.";
+          } else if (data.status === "PAID") {
+            result.innerText =
+              "Your pickup & delivery cost is $" +
+              data.price.toFixed(2) +
+              ". This amount will be added to your total order price. Orders over $" +
+              data.freeThreshold +
+              " qualify for FREE pickup & delivery.";
+          } else if (data.status === "OUT_OF_RANGE") {
+            result.innerText =
+              "Your address is outside our service range. Please contact us at 689-332-6243 for special arrangements.";
+          } else {
+            result.innerText =
+              "Unable to calculate right now.\n" +
+              JSON.stringify(data, null, 2);
+          }
+
+        } catch (e) {
+          result.innerText = "Error connecting to server: " + e.message;
+        }
+      }
+    </script>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <div class="brand">Thread and Scissors Alterations</div>
+
+        <h1>Check Pickup & Delivery Cost</h1>
+
+        <p class="subtext">
+          Enter your full address to check your pickup & delivery cost.
+          Depending on your location, you may qualify for FREE service.
+        </p>
+
+        <div class="search-box">
+          <input
+            type="text"
+            id="address"
+            placeholder="Enter your full address"
+            onkeydown="if(event.key==='Enter'){checkPrice();}"
+          >
+          <button type="button" onclick="checkPrice()">Check Price</button>
+        </div>
+
+        <div id="result"></div>
+
+        <div class="note">
+          Free pickup & delivery may be available depending on your location and order total.
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
