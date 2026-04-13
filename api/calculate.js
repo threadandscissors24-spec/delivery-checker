@@ -3,12 +3,25 @@ export default async function handler(req, res) {
     const address = (req.query.address || "").trim();
 
     if (!address) {
-      return res.status(400).json({ status: "ERROR" });
+      return res.status(400).json({
+        status: "ERROR",
+        message: "Missing address."
+      });
     }
 
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 
+    if (!apiKey) {
+      return res.status(500).json({
+        status: "ERROR",
+        message: "Missing GOOGLE_MAPS_API_KEY in Vercel."
+      });
+    }
+
     const BASE_ADDRESS = "2976 4th St, Orlando, FL 32820, USA";
+    const RATE_PER_MILE = 0.50;
+    const FREE_MILES = 8;
+    const MAX_MILES = 50;
 
     const url =
       "https://maps.googleapis.com/maps/api/distancematrix/json?origins=" +
@@ -19,20 +32,63 @@ export default async function handler(req, res) {
     const response = await fetch(url);
     const data = await response.json();
 
-    const element = data.rows[0].elements[0];
-
-    if (element.status !== "OK") {
-      return res.json({ status: "ERROR" });
+    if (
+      !data ||
+      !data.rows ||
+      !data.rows[0] ||
+      !data.rows[0].elements ||
+      !data.rows[0].elements[0] ||
+      data.rows[0].elements[0].status !== "OK"
+    ) {
+      return res.status(200).json({
+        status: "ERROR",
+        message: "Unable to calculate the delivery cost right now.",
+        debug: data
+      });
     }
 
-    const miles = element.distance.value * 0.000621371;
+    const meters = data.rows[0].elements[0].distance.value;
+    const miles = meters * 0.000621371;
 
-    return res.json({
-      status: "OK",
-      miles: miles
+    if (miles > MAX_MILES) {
+      return res.status(200).json({
+        status: "OUT_OF_RANGE",
+        miles: miles,
+        price: "",
+        freeThreshold: ""
+      });
+    }
+
+    if (miles <= FREE_MILES) {
+      return res.status(200).json({
+        status: "FREE",
+        miles: miles,
+        price: 0,
+        freeThreshold: 0
+      });
+    }
+
+    let freeThreshold = 100;
+    if (miles > 20 && miles <= 30) {
+      freeThreshold = 150;
+    } else if (miles > 30 && miles <= 50) {
+      freeThreshold = 200;
+    }
+
+    let price = miles * RATE_PER_MILE;
+    price = Math.floor(price) + 0.99;
+
+    return res.status(200).json({
+      status: "PAID",
+      miles: miles,
+      price: price,
+      freeThreshold: freeThreshold
     });
 
-  } catch (e) {
-    return res.json({ status: "ERROR", message: e.message });
+  } catch (error) {
+    return res.status(500).json({
+      status: "ERROR",
+      message: error.message
+    });
   }
 }
