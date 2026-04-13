@@ -1,170 +1,121 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thread and Scissors Alterations</title>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thread and Scissors Alterations</title>
 
-    <style>
-      body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        background: #f7f7f7;
-      }
+<style>
+body {
+  margin:0;
+  font-family:Arial;
+  background:#f7f7f7;
+}
 
-      .wrap {
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
+.wrap {
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
 
-      .card {
-        width: 100%;
-        max-width: 500px;
-        background: #fff;
-        border-radius: 20px;
-        padding: 25px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-      }
+.card {
+  background:#fff;
+  padding:25px;
+  border-radius:20px;
+  width:100%;
+  max-width:500px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.1);
+}
 
-      h1 {
-        text-align: center;
-      }
+h1 {
+  text-align:center;
+}
 
-      input {
-        width: 100%;
-        padding: 14px;
-        border-radius: 12px;
-        border: 1px solid #ccc;
-        margin-bottom: 10px;
-        font-size: 16px;
-      }
+input {
+  width:100%;
+  padding:14px;
+  border-radius:12px;
+  border:1px solid #ccc;
+  margin-bottom:10px;
+}
 
-      button {
-        width: 100%;
-        padding: 14px;
-        border-radius: 12px;
-        border: none;
-        background: black;
-        color: white;
-        font-size: 16px;
-        font-weight: bold;
-      }
+button {
+  width:100%;
+  padding:14px;
+  border-radius:12px;
+  border:none;
+  background:black;
+  color:white;
+  font-weight:bold;
+}
 
-      #result {
-        margin-top: 15px;
-        padding: 12px;
-        background: #f0f0f0;
-        border-radius: 10px;
-        min-height: 40px;
-      }
+#result {
+  margin-top:15px;
+  padding:12px;
+  background:#f0f0f0;
+  border-radius:10px;
+}
+</style>
 
-      #debug {
-        margin-top: 10px;
-        font-size: 12px;
-        color: red;
-        white-space: pre-wrap;
-      }
-    </style>
+<script>
+async function checkPrice() {
+  const address = document.getElementById("address").value.trim();
+  const result = document.getElementById("result");
 
-    <script>
-      let mapsReady = false;
+  if (!address) {
+    result.innerText = "Please enter your address.";
+    return;
+  }
 
-      function googleMapsReady() {
-        mapsReady = true;
-        document.getElementById("debug").innerText += "Maps cargó correctamente\n";
-      }
+  result.innerText = "Checking...";
 
-      const BASE_ADDRESS = "2976 4th St, Orlando, FL 32820, USA";
+  try {
+    const res = await fetch(`/api/calculate?address=${encodeURIComponent(address)}`);
+    const data = await res.json();
 
-      function checkPrice() {
-        const address = document.getElementById("address").value;
-        const result = document.getElementById("result");
-        const debug = document.getElementById("debug");
+    if (data.status === "FREE") {
+      result.innerText = "Your pickup & delivery cost is FREE.";
+    }
 
-        debug.innerText = "";
+    else if (data.status === "PAID") {
+      result.innerText =
+        "Your pickup & delivery cost is $" +
+        data.price.toFixed(2) +
+        ". Orders over $" +
+        data.freeThreshold +
+        " qualify for FREE pickup & delivery.";
+    }
 
-        if (!mapsReady) {
-          result.innerText = "Maps no está listo";
-          debug.innerText += "mapsReady = false\n";
-          return;
-        }
+    else if (data.status === "OUT_OF_RANGE") {
+      result.innerText =
+        "Your address is outside our service range. Contact us at 689-332-6243.";
+    }
 
-        if (!window.google) {
-          result.innerText = "Google no existe";
-          debug.innerText += "window.google undefined\n";
-          return;
-        }
+    else {
+      result.innerText = "Unable to calculate right now.";
+    }
 
-        if (!google.maps) {
-          result.innerText = "google.maps no existe";
-          debug.innerText += "google.maps undefined\n";
-          return;
-        }
+  } catch (e) {
+    result.innerText = "Error connecting to server.";
+  }
+}
+</script>
 
-        if (!google.maps.DistanceMatrixService) {
-          result.innerText = "DistanceMatrixService no existe";
-          debug.innerText += "DistanceMatrixService undefined\n";
-          return;
-        }
+</head>
 
-        result.innerText = "Checking...";
+<body>
+<div class="wrap">
+  <div class="card">
 
-        const service = new google.maps.DistanceMatrixService();
+    <h1>Check Pickup & Delivery Cost</h1>
 
-        service.getDistanceMatrix(
-          {
-            origins: [BASE_ADDRESS],
-            destinations: [address],
-            travelMode: google.maps.TravelMode.DRIVING
-          },
-          function(response, status) {
+    <input id="address" placeholder="Enter your address">
 
-            debug.innerText += "STATUS: " + status + "\n";
+    <button onclick="checkPrice()">Check Price</button>
 
-            if (status !== "OK") {
-              result.innerText = "Error: " + status;
-              return;
-            }
+    <div id="result"></div>
 
-            const element = response.rows[0].elements[0];
-
-            debug.innerText += "ELEMENT STATUS: " + element.status + "\n";
-
-            if (element.status !== "OK") {
-              result.innerText = "Address error: " + element.status;
-              return;
-            }
-
-            const miles = element.distance.value * 0.000621371;
-
-            result.innerText = "Miles: " + miles.toFixed(2);
-          }
-        );
-      }
-    </script>
-
-    <script
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCZoyQa2zJeNiIaHyUekHtNaBEgdmQ16WY&callback=googleMapsReady"
-      async
-      defer>
-    </script>
-
-  </head>
-
-  <body>
-    <div class="wrap">
-      <div class="card">
-        <h1>Check Delivery</h1>
-
-        <input id="address" placeholder="Enter address">
-
-        <button onclick="checkPrice()">Check Price</button>
-
-        <div id="result"></div>
-        <div id="debug"></div>
-
-      </div>
-    </div>
-  </body>
+  </div>
+</div>
+</body>
 </html>
