@@ -26,12 +26,41 @@ export default async function handler(req, res) {
 
     const miles = element.distance.value * 0.000621371;
 
-    return res.json({
-      status: "OK",
-      miles: miles
-    });
+   const RATE_PER_MILE = 0.50;
+const FREE_MILES = 8;
+const MAX_MILES = 50;
 
-  } catch (e) {
-    return res.json({ status: "ERROR", message: e.message });
-  }
+if (miles > MAX_MILES) {
+  return res.json({
+    status: "OUT_OF_RANGE",
+    miles: miles,
+    price: "",
+    freeThreshold: ""
+  });
 }
+
+if (miles <= FREE_MILES) {
+  return res.json({
+    status: "FREE",
+    miles: miles,
+    price: 0,
+    freeThreshold: 0
+  });
+}
+
+let freeThreshold = 100;
+if (miles > 20 && miles <= 30) {
+  freeThreshold = 150;
+} else if (miles > 30 && miles <= 50) {
+  freeThreshold = 200;
+}
+
+let price = miles * RATE_PER_MILE;
+price = Math.floor(price) + 0.99;
+
+return res.json({
+  status: "PAID",
+  miles: miles,
+  price: price,
+  freeThreshold: freeThreshold
+});
