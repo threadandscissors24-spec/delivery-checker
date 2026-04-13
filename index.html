@@ -1,45 +1,37 @@
-<script>
-async function checkPrice() {
-  const address = document.getElementById("address").value.trim();
-  const result = document.getElementById("result");
-
-  if (!address) {
-    result.innerText = "Please enter your address.";
-    return;
-  }
-
-  result.innerText = "Checking...";
-
+export default async function handler(req, res) {
   try {
-    const res = await fetch(`/api/calculate?address=${encodeURIComponent(address)}`);
-    const data = await res.json();
+    const address = (req.query.address || "").trim();
 
-    if (data.status === "FREE") {
-      result.innerText = "Your pickup & delivery cost is FREE.";
+    if (!address) {
+      return res.status(400).json({ status: "ERROR" });
     }
 
-    else if (data.status === "PAID") {
-      result.innerText =
-        "Your pickup & delivery cost is $" +
-        data.price.toFixed(2) +
-        ". Orders over $" +
-        data.freeThreshold +
-        " qualify for FREE pickup & delivery.";
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    const BASE_ADDRESS = "2976 4th St, Orlando, FL 32820, USA";
+
+    const url =
+      "https://maps.googleapis.com/maps/api/distancematrix/json?origins=" +
+      encodeURIComponent(BASE_ADDRESS) +
+      "&destinations=" + encodeURIComponent(address) +
+      "&units=imperial&key=" + apiKey;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    const element = data.rows[0].elements[0];
+
+    if (element.status !== "OK") {
+      return res.json({ status: "ERROR" });
     }
 
-    else if (data.status === "OUT_OF_RANGE") {
-      result.innerText =
-        "Your address is outside our service range. Contact us at 689-332-6243.";
-    }
+    const miles = element.distance.value * 0.000621371;
 
-    else {
-      result.innerText =
-        "ERROR:\n" +
-        JSON.stringify(data, null, 2);
-    }
+    return res.json({
+      status: "OK",
+      miles: miles
+    });
 
   } catch (e) {
-    result.innerText = "Error connecting to server: " + e.message;
+    return res.json({ status: "ERROR", message: e.message });
   }
 }
-</script>
